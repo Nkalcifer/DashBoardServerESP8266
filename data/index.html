@@ -1,0 +1,268 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1; charset=utf-8; text/html"
+    http-equiv="Content-Type" />
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="gauge.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <style>
+    html {
+      font-family: Arial;
+      display: inline-block;
+      text-align: center;
+    }
+
+    p {
+      font-size: 1.2rem;
+    }
+
+    h2 {
+      font-family: Arial;
+      font-size: 2.5rem;
+      text-align: center;
+    }
+
+    body {
+      min-width: 310px;
+      max-width: 800px;
+      height: 400px;
+      margin: 0 auto;
+    }
+
+    .topnav {
+      overflow: hidden;
+      background-color: #003366;
+      color: #FFD43B;
+      font-size: 1rem;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .card {
+      background-color: white;
+      box-shadow: 2px 2px 12px 1px rgba(140, 140, 140, .5);
+      display: flex;
+      justify-content: center;
+    }
+
+    .medidor {
+      padding: 10px;
+      margin: 10px;
+    }
+
+    .card-title {
+      color: #003366;
+      font-weight: bold;
+    }
+
+    .cards {
+      max-width: 800px;
+      margin: 0 auto;
+      display: grid;
+      grid-gap: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .reading {
+      font-size: 1.2rem;
+    }
+
+    .cube-content {
+      width: 100%;
+      background-color: white;
+      height: 300px;
+      margin: auto;
+      padding-top: 2%;
+    }
+
+    #reset {
+      border: none;
+      color: #FEFCFB;
+      background-color: #003366;
+      padding: 10px;
+      text-align: center;
+      display: inline-block;
+      font-size: 14px;
+      width: 150px;
+      border-radius: 4px;
+    }
+
+    #resetX,
+    #resetY,
+    #resetZ {
+      border: none;
+      color: #FEFCFB;
+      background-color: #003366;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      text-align: center;
+      display: inline-block;
+      font-size: 14px;
+      width: 20px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>CubeStat ESP8266</h2>
+
+  <div class="card">
+    <div id="chart-medidor" class="medidor"></div>
+    <div id="chart-temperatura" class="container"></div>
+    <script type="text/javascript">
+
+      //------------------------------------------------
+      google.charts.load('current', { 'packages': ['gauge'] });
+      google.charts.setOnLoadCallback(drawChart);
+      function drawChart() {
+        var data = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['Temperatura', 0]
+
+        ]);
+        var options = {
+          width: 200, height: 200,
+          redFrom: 80, redTo: 100,
+          yellowFrom: 50, yellowTo: 80,
+          minorTicks: 5
+        };
+        var chart = new google.visualization.Gauge(document.getElementById('chart-medidor'));
+        chart.draw(data, options);
+
+        setInterval(function () {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = function () {
+            if (this.readyState == 4 && this.status == 200) {
+              var t = parseFloat(this.responseText);
+              data.setValue(0, 1, 0 + t);
+              chart.draw(data, options);
+            }
+          };
+
+          xhttp.open("GET", "/temperatura", true);
+          xhttp.send();
+
+        }, 500);
+      }
+
+    </script>
+  </div>
+  <canvas data-type="linear-gauge"></canvas>
+
+
+  <div class="card">
+    <div id="chart-Proximidad" class="container"></div>
+
+  </div>
+
+
+</body>
+<script>
+  var chartT = new Highcharts.Chart({
+    chart: { renderTo: 'chart-temperatura' },
+    title: { text: 'MPU6050 Temperatura' },
+    series: [{
+      showInLegend: false,
+      data: []
+    }],
+    plotOptions: {
+      line: {
+        animation: false,
+        dataLabels: { enabled: true }
+      },
+      series: { color: '#059e8a' }
+    },
+    xAxis: {
+      type: 'datetime',
+      dateTimeLabelFormats: { second: '%H:%M:%S' }
+    },
+    yAxis: {
+      title: { text: 'Temperatura (Celsius)' }
+      //title: { text: 'Temperatura (Fahrenheit)' }
+    },
+    credits: { enabled: false }
+  });
+  setInterval(function () {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        var x = (new Date()).getTime(),
+          y = parseFloat(this.responseText);
+        //console.log(this.responseText);
+        if (chartT.series[0].data.length > 100) {
+          chartT.series[0].addPoint([x, y], true, true, true);
+        } else {
+          chartT.series[0].addPoint([x, y], true, false, true);
+        }
+      }
+    };
+    xhttp.open("GET", "/temperatura", true);
+    xhttp.send();
+  }, 500);
+
+
+
+
+
+  //------------------------------------------------
+  //Script Sensor Ultrasonico
+
+  var chartH = new Highcharts.Chart({
+    chart: { renderTo: 'chart-Proximidad' },
+    title: { text: 'HC-SR04 Ultrasonico' },
+    series: [{
+      showInLegend: false,
+      data: []
+    }],
+    plotOptions: {
+      line: {
+        animation: false,
+        dataLabels: { enabled: true }
+      }
+    },
+    xAxis: {
+      type: 'datetime',
+      dateTimeLabelFormats: { second: '%H:%M:%S' }
+    },
+    yAxis: {
+      title: { text: 'Distancia (cm)' }
+    },
+    credits: { enabled: false }
+  });
+
+  setInterval(function () {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function () {
+      if (this.readyState == 4 && this.status == 200) {
+        var x = (new Date()).getTime(),
+          y = parseFloat(this.responseText);
+        //console.log(this.responseText);
+        if (chartH.series[0].data.length > 100) {
+          chartH.series[0].addPoint([x, y], true, true, true);
+        } else {
+          chartH.series[0].addPoint([x, y], true, false, true);
+        }
+      }
+    };
+    xhttp.open("GET", "/proximidad", true);
+    xhttp.send();
+  }, 500);
+
+
+
+
+
+
+
+
+
+</script>
+
+</html>
